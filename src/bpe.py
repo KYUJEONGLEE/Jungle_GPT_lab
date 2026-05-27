@@ -8,7 +8,8 @@ UTF-8 byte-level BPE 토크나이저 과제 템플릿.
 """
 
 from pathlib import Path
-
+import re
+from collections import Counter
 
 PAD_TOKEN = "<pad>"
 UNK_TOKEN = "<unk>"
@@ -43,7 +44,18 @@ class BPETokenizer:
         1. 특수 토큰 4개를 고정 ID 0~3에 등록합니다.
         2. byte 0~255를 ID 4~259에 bytes([byte_value]) 형태로 등록합니다.
         """
-        raise NotImplementedError("_init_special_tokens를 구현하세요.")
+
+        self.id_to_token = {}
+        self.token_to_id = {}
+        self.merges = []
+
+        for token_id, token in enumerate(SPECIAL_TOKENS):
+            self.id_to_token[token_id] = token
+            self.token_to_id[token] = token_id
+        
+        for i in range(BYTE_OFFSET, NUM_BYTES + BYTE_OFFSET):
+            self.id_to_token[i] = bytes([i-4])
+            self.token_to_id[bytes([i-4])] = i
 
     def get_pad_id(self):
         """padding 토큰 ID."""
@@ -71,7 +83,42 @@ class BPETokenizer:
         - 새 token ID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
         - `self.merges`, `self.id_to_token`, `self.token_to_id`를 갱신합니다.
         """
-        raise NotImplementedError("BPETokenizer.train을 구현하세요.")
+        self._init_special_tokens()
+
+        ids = [b + BYTE_OFFSET for b in corpus.encode("utf-8")]
+        next_id = NUM_BYTES + BYTE_OFFSET
+
+        while next_id < self.vocab_size:
+            counts = Counter()
+            # 페어 개수 세기
+            for pair in zip(ids, ids[1:]):
+                counts[pair] += 1
+
+            pair_counts = counts
+            if not pair_counts:
+                break
+            
+            # 가장 많이 사용된 페어
+            best_pair = max(pair_counts, key=pair_counts.get)
+
+            # 가장 많이 사용된 페어 머지, 단어 사전에 추가
+            self.merges.append((best_pair, next_id))
+            self.id_to_token[next_id] = self.id_to_token[best_pair[0]] + self.id_to_token[best_pair[1]]
+            self.token_to_id[self.id_to_token[best_pair[0]] + self.id_to_token[best_pair[1]]] = next_id
+
+
+            i = 0
+            result = list()
+            while i < len(ids):
+                if (i < len(ids) - 1) and (ids[i], ids[i+1]) == best_pair:
+                    result.append(next_id)
+                    i += 2
+                else:
+                    result.append(ids[i])
+                    i += 1
+            
+            ids = result
+            next_id += 1
 
     def save(self, path: str | Path):
         """
@@ -85,7 +132,11 @@ class BPETokenizer:
         """
         TODO: save()로 저장한 JSON 파일을 읽어 vocabulary와 merge rule을 복원합니다.
         """
-        raise NotImplementedError("BPETokenizer.load를 구현하세요.")
+        file_path = Path(path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"파일을 찾을 수 없습니다: {path}")
+        
+        return file_path.read_text(encoding="utf-8")
 
     def encode(self, text: str, add_bos_eos: bool = False) -> list[int]:
         """
@@ -96,7 +147,7 @@ class BPETokenizer:
         - train/load에서 얻은 merge rule을 학습 순서대로 적용합니다.
         - add_bos_eos=True이면 앞뒤에 bos/eos ID를 붙입니다.
         """
-        raise NotImplementedError("BPETokenizer.encode를 구현하세요.")
+
 
     def decode(self, ids: list[int], skip_special: bool = True) -> str:
         """
@@ -107,3 +158,4 @@ class BPETokenizer:
         - byte를 하나씩 decode하지 말고, 마지막에 `bytes(...).decode("utf-8")`를 한 번만 호출합니다.
         """
         raise NotImplementedError("BPETokenizer.decode를 구현하세요.")
+    
