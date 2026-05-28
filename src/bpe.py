@@ -8,6 +8,7 @@ UTF-8 byte-level BPE 토크나이저 과제 템플릿.
 """
 
 from pathlib import Path
+import json
 
 
 PAD_TOKEN = "<pad>"
@@ -179,13 +180,62 @@ class BPETokenizer:
 
         bytes와 tuple은 JSON에 바로 저장할 수 없으므로 type 정보를 함께 저장하세요.
         """
-        raise NotImplementedError("BPETokenizer.save를 구현하세요.")
+        voca = []
+        for token_id, token_byte in self.id_to_token.items():
+            voca.append({
+                "id": token_id,
+                "type": "bytes",
+                "value": list(token_byte)
+            })
+
+        merge_rule = []
+        for pair in self.merges:
+            merge_rule.append({
+                "type": "tuple",
+                "value": list(pair)
+            })
+
+        data = {
+            "vocab": voca,
+            "merges": merge_rule,
+        }
+
+        with open(path, "w") as f:
+            json.dump(data, f)
+
 
     def load(self, path: str | Path):
         """
         TODO: save()로 저장한 JSON 파일을 읽어 vocabulary와 merge rule을 복원합니다.
         """
-        raise NotImplementedError("BPETokenizer.load를 구현하세요.")
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self.id_to_token = {}
+        self.token_to_id = {}
+        self.merges = []
+
+        # save 에서 vocab의 모든 값을 같은 모양으로 저장했기 때문에
+        # load 에서 token_id 범위로 저장 방법을 나눈다.
+        for item in data["vocab"]:
+            token_id = item["id"]
+
+            if token_id < BYTE_OFFSET:
+                # 0~3번은 특수 토큰
+                token = SPECIAL_TOKENS[token_id]
+            elif token_id < BYTE_OFFSET + NUM_BYTES:
+                # 4~259번은 byte로 복원
+                token = bytes(item["value"])
+            else:
+                # 260번 이상은 merge로 생긴 토큰, tuple
+                token = tuple(item["value"])
+
+            self.id_to_token[token_id] = token
+            self.token_to_id[token] = token_id
+
+        # merge rule 그대로 튜플로 바꿔서 저장한다.
+        for item in data["merges"]:
+            self.merges.append(tuple(item["value"]))
 
     def encode(self, text: str, add_bos_eos: bool = False) -> list[int]:
         """
@@ -231,7 +281,7 @@ class BPETokenizer:
         - byte를 하나씩 decode하지 말고, 마지막에 `bytes(...).decode("utf-8")`를 한 번만 호출합니다.
         """
         """
-            재귀를 사용 안하고 코딩하는 방법: stack 사용
+            재귀를 사용 안하는 방법: stack 사용
             1. 결과를 담을 array 선언
             2. 입력으로 받은 token id를 앞에서부터 본다.
             3. <pad>, <bos>, <eos> 같은 특수 토큰은 skip_special=True면 그냥 넘긴다.
@@ -258,7 +308,7 @@ class BPETokenizer:
                 merges 배열에서 해당 byte가 어떻게 이루어져 있는지 먼저 찾아야 할 듯
                 merges 에서 찾는게 아니라 id_to_token에서 찾을 수 있지않을까
                 """
-                # 튜플이 들어간다.
+                # 튜플을 쪼갠다
                 merge_left = self.id_to_token[id][0]
                 merge_right = self.id_to_token[id][1]
                 merge_stack.append(merge_right)
@@ -270,7 +320,7 @@ class BPETokenizer:
                 # 스택이 빌때까지 반복한다.
                 while len(merge_stack) > 0:
                     pop_id = merge_stack.pop()
-                    if pop_id < 260:
+                    if pop_id < BYTE_OFFSET + NUM_BYTES:
                         byte_tok_list.append(self.id_to_token[pop_id])
                     else:
                         merge_left = self.id_to_token[pop_id][0]
