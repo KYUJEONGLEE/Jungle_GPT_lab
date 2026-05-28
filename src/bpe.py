@@ -132,15 +132,16 @@ class BPETokenizer:
         - train/load에서 얻은 merge rule을 학습 순서대로 적용합니다.
         - add_bos_eos=True이면 앞뒤에 bos/eos ID를 붙입니다.
         """
-
-        """
-        * 문자열 utf-8 바이트로 바꾸기
-        * 바이트를 기본 토큰처럼 취급 -> ID 시퀀스 만들기
-        * merge rule 적용해서 더 긴 토큰으로 합침
-        """
         ids = [b + BYTE_OFFSET for b in text.encode("utf-8")]
 
-        for pair, 
+        for pair, next_id in self.merges:
+            ids = self._merge(ids, pair, next_id)
+
+        if add_bos_eos:
+            ids.insert(0, self.get_bos_id())
+            ids.append(self.get_eos_id())
+        
+        return ids
 
 
     def decode(self, ids: list[int], skip_special: bool = True) -> str:
