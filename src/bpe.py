@@ -89,12 +89,8 @@ class BPETokenizer:
         next_id = NUM_BYTES + BYTE_OFFSET
 
         while next_id < self.vocab_size:
-            counts = Counter()
             # 페어 개수 세기
-            for pair in zip(ids, ids[1:]):
-                counts[pair] += 1
-
-            pair_counts = counts
+            pair_counts = self._count_pairs(ids)
             if not pair_counts:
                 break
             
@@ -106,18 +102,7 @@ class BPETokenizer:
             self.id_to_token[next_id] = self.id_to_token[best_pair[0]] + self.id_to_token[best_pair[1]]
             self.token_to_id[self.id_to_token[best_pair[0]] + self.id_to_token[best_pair[1]]] = next_id
 
-
-            i = 0
-            result = list()
-            while i < len(ids):
-                if (i < len(ids) - 1) and (ids[i], ids[i+1]) == best_pair:
-                    result.append(next_id)
-                    i += 2
-                else:
-                    result.append(ids[i])
-                    i += 1
-            
-            ids = result
+            ids = self._merge(ids, best_pair, next_id)
             next_id += 1
 
     def save(self, path: str | Path):
@@ -148,6 +133,15 @@ class BPETokenizer:
         - add_bos_eos=True이면 앞뒤에 bos/eos ID를 붙입니다.
         """
 
+        """
+        * 문자열 utf-8 바이트로 바꾸기
+        * 바이트를 기본 토큰처럼 취급 -> ID 시퀀스 만들기
+        * merge rule 적용해서 더 긴 토큰으로 합침
+        """
+        ids = [b + BYTE_OFFSET for b in text.encode("utf-8")]
+
+        for pair, 
+
 
     def decode(self, ids: list[int], skip_special: bool = True) -> str:
         """
@@ -159,3 +153,23 @@ class BPETokenizer:
         """
         raise NotImplementedError("BPETokenizer.decode를 구현하세요.")
     
+    def _count_pairs(self, ids: list[int]) -> Counter[tuple[int, int]]:
+        counts = Counter()
+        # 페어 개수 세기
+        for pair in zip(ids, ids[1:]):
+            counts[pair] += 1
+
+        return counts
+    
+    def _merge(self, ids: list[int], pair: tuple[int, int], new_id: int) -> list[int]:
+        i = 0
+        result = list()
+        while i < len(ids):
+            if (i < len(ids) - 1) and (ids[i], ids[i+1]) == pair:
+                result.append(new_id)
+                i += 2
+            else:
+                result.append(ids[i])
+                i += 1
+
+        return result
