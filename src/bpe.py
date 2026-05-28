@@ -230,6 +230,55 @@ class BPETokenizer:
         - merge token은 원본 byte token까지 재귀적으로 펼칩니다.
         - byte를 하나씩 decode하지 말고, 마지막에 `bytes(...).decode("utf-8")`를 한 번만 호출합니다.
         """
-        # 입력값으로 받은 encode 된 list
-        # 일단 펼친다.
-        # for token_id in ids:
+        """
+            재귀를 사용 안하고 코딩하는 방법: stack 사용
+            1. 결과를 담을 array 선언
+            2. 입력으로 받은 token id를 앞에서부터 본다.
+            3. <pad>, <bos>, <eos> 같은 특수 토큰은 skip_special=True면 그냥 넘긴다.
+            4. 일반 byte token이면 바로 결과 byte에 붙인다.
+            5. merge token이면 (왼쪽 토큰, 오른쪽 토큰) 형태니까, 그 둘을 다시 풀어야 한다.
+            6. 이때 재귀 대신 stack을 쓴다.
+            7. stack은 LIFO라서 순서를 유지하려면 오른쪽을 먼저 넣고, 왼쪽을 나중에 넣는다.
+            8. 모든 토큰이 byte 단위까지 풀리면 마지막에 한 번만 UTF-8 decode한다.
+        """
+        byte_tok_list = []
+        merge_stack = []
+        # 인자로 받은 ids 리스트는 안에 int 정수값들이 들어가 있다.
+        for id in ids:
+            # 특수 토큰 조건이 true 면 그냥 패스한다.
+            # if skip_special:
+            if id < BYTE_OFFSET:
+                continue
+            """ byte가 일반 token, 즉 merge token이 아니면 그냥 그대로 tok_list에 넣는다."""
+            if id < BYTE_OFFSET + NUM_BYTES:
+                byte_tok_list.append(self.id_to_token[id])
+            else:
+                """
+                byte가 merge token 이라면 분해한다.
+                merges 배열에서 해당 byte가 어떻게 이루어져 있는지 먼저 찾아야 할 듯
+                merges 에서 찾는게 아니라 id_to_token에서 찾을 수 있지않을까
+                """
+                # 튜플이 들어간다.
+                merge_left = self.id_to_token[id][0]
+                merge_right = self.id_to_token[id][1]
+                merge_stack.append(merge_right)
+                merge_stack.append(merge_left)
+                # 일단 right, left 순서대로 스택에 넣는다.
+                # 그리고 pop 원소를 검사한다.
+                # 그 pop된 원소가 260보다 크거나 같으면 다시 분리해서 다시 스택에 오른쪽부터 넣는다.
+                # 만약 260보다 작으면 byte_tok_list에 넣는다.
+                # 스택이 빌때까지 반복한다.
+                while len(merge_stack) > 0:
+                    pop_id = merge_stack.pop()
+                    if pop_id < 260:
+                        byte_tok_list.append(self.id_to_token[pop_id])
+                    else:
+                        merge_left = self.id_to_token[pop_id][0]
+                        merge_right = self.id_to_token[pop_id][1]
+
+                        merge_stack.append(merge_right)
+                        merge_stack.append(merge_left)
+
+        all_bytes = b''.join(byte_tok_list)
+        text = all_bytes.decode('utf-8', errors='replace')
+        return text
