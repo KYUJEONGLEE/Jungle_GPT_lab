@@ -152,7 +152,21 @@ class BPETokenizer:
         - merge token은 원본 byte token까지 재귀적으로 펼칩니다.
         - byte를 하나씩 decode하지 말고, 마지막에 `bytes(...).decode("utf-8")`를 한 번만 호출합니다.
         """
-        raise NotImplementedError("BPETokenizer.decode를 구현하세요.")
+        result = bytearray()
+
+        for id in ids:
+            if id in SPECIAL_IDS.values():
+                if skip_special:
+                    continue
+
+            tmp = self.id_to_token[id]
+            
+            if isinstance(tmp, str):
+                result.extend(tmp.encode("utf-8"))
+            else:
+                result.extend(tmp)
+
+        return bytes(result).decode("utf-8")
     
     def _count_pairs(self, ids: list[int]) -> Counter[tuple[int, int]]:
         counts = Counter()
