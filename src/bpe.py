@@ -142,11 +142,29 @@ class BPETokenizer:
         """
         TODO: save()로 저장한 JSON 파일을 읽어 vocabulary와 merge rule을 복원합니다.
         """
-        file_path = Path(path)
-        if not file_path.exists():
-            raise FileNotFoundError(f"파일을 찾을 수 없습니다: {path}")
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
         
-        return file_path.read_text(encoding="utf-8")
+        self.vocab_size = data["vocab_size"]
+
+        self.merges = []
+        for merge in data["merges"]:
+            pair = tuple(merge["pair"])
+            new_id = merge["new_id"]
+            self.merges.append((pair, new_id))
+        
+        self.id_to_token = {}
+        self.token_to_id = {}
+        for key, value in data["id_to_token"].items():
+            new_id = int(key)
+            if value["type"] == "special":
+                v = str(value["value"])
+                self.id_to_token[new_id] = v
+                self.token_to_id[v] = new_id
+            else:
+                v = bytes(value["value"])
+                self.id_to_token[new_id] = v
+                self.token_to_id[v] = new_id
 
     def encode(self, text: str, add_bos_eos: bool = False) -> list[int]:
         """
