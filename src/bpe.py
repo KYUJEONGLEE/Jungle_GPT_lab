@@ -98,9 +98,9 @@ class BPETokenizer:
             best_pair = max(pair_counts, key=pair_counts.get)
 
             # 가장 많이 사용된 페어 머지, 단어 사전에 추가
-            self.merges.append((best_pair, next_id))
-            self.id_to_token[next_id] = self.id_to_token[best_pair[0]] + self.id_to_token[best_pair[1]]
-            self.token_to_id[self.id_to_token[best_pair[0]] + self.id_to_token[best_pair[1]]] = next_id
+            self.merges.append(best_pair)
+            self.id_to_token[next_id] = best_pair
+            self.token_to_id[best_pair] = next_id
 
             ids = self._merge(ids, best_pair, next_id)
             next_id += 1
@@ -117,10 +117,9 @@ class BPETokenizer:
             "id_to_token": {}
         }
 
-        for pair, next_id in self.merges:
+        for pair in self.merges:
             data["merges"].append({
-                "pair": list(pair),
-                "new_id": next_id
+                "pair": list(pair)
             })
         
         for key, value in self.id_to_token.items():
@@ -129,9 +128,14 @@ class BPETokenizer:
                     "type": "bytes",
                     "value": list(value)
                 }
-            else:
+            elif isinstance(value, str):
                 data["id_to_token"][str(key)] = {
                     "type": "special",
+                    "value": value
+                }
+            else:
+                data["id_to_token"][str(key)] = {
+                    "type": "tuple",
                     "value": value
                 }
         
@@ -150,8 +154,7 @@ class BPETokenizer:
         self.merges = []
         for merge in data["merges"]:
             pair = tuple(merge["pair"])
-            new_id = merge["new_id"]
-            self.merges.append((pair, new_id))
+            self.merges.append(pair)
         
         self.id_to_token = {}
         self.token_to_id = {}
@@ -161,8 +164,12 @@ class BPETokenizer:
                 v = str(value["value"])
                 self.id_to_token[new_id] = v
                 self.token_to_id[v] = new_id
-            else:
+            elif value["type"] == "bytes":
                 v = bytes(value["value"])
+                self.id_to_token[new_id] = v
+                self.token_to_id[v] = new_id
+            else:
+                v = tuple(value["value"])
                 self.id_to_token[new_id] = v
                 self.token_to_id[v] = new_id
 
@@ -177,7 +184,7 @@ class BPETokenizer:
         """
         ids = [b + BYTE_OFFSET for b in text.encode("utf-8")]
 
-        for pair, next_id in self.merges:
+        for pair, next_id in enumerate(self.merges):
             ids = self._merge(ids, pair, next_id)
 
         if add_bos_eos:
