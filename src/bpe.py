@@ -8,7 +8,8 @@ UTF-8 byte-level BPE 토크나이저 과제 템플릿.
 """
 
 from pathlib import Path
-
+from collections import Counter
+import json
 
 PAD_TOKEN = "<pad>"
 UNK_TOKEN = "<unk>"
@@ -43,7 +44,18 @@ class BPETokenizer:
         1. 특수 토큰 4개를 고정 ID 0~3에 등록합니다.
         2. byte 0~255를 ID 4~259에 bytes([byte_value]) 형태로 등록합니다.
         """
-        raise NotImplementedError("_init_special_tokens를 구현하세요.")
+
+        self.id_to_token = {}
+        self.token_to_id = {}
+        self.merges = []
+
+        for token_id, token in enumerate(SPECIAL_TOKENS):
+            self.id_to_token[token_id] = token
+            self.token_to_id[token] = token_id
+        
+        for i in range(BYTE_OFFSET, NUM_BYTES + BYTE_OFFSET):
+            self.id_to_token[i] = bytes([i-BYTE_OFFSET])
+            self.token_to_id[bytes([i-BYTE_OFFSET])] = i
 
     def get_pad_id(self):
         """padding 토큰 ID."""
@@ -71,7 +83,29 @@ class BPETokenizer:
         - 새 token ID를 만들고, 시퀀스의 해당 pair를 새 ID로 치환합니다.
         - `self.merges`, `self.id_to_token`, `self.token_to_id`를 갱신합니다.
         """
-        raise NotImplementedError("BPETokenizer.train을 구현하세요.")
+        self._init_special_tokens()
+
+        ids = [b + BYTE_OFFSET for b in corpus.encode("utf-8")]
+        next_id = NUM_BYTES + BYTE_OFFSET
+
+        while next_id < self.vocab_size:
+            # 페어 개수 세기
+            pair_counts = self._count_pairs(ids)
+            if not pair_counts:
+                break
+            
+            # 가장 많이 사용된 페어
+            best_pair = max(pair_counts, key=pair_counts.get)
+            if pair_counts[best_pair] < 2:
+                break
+
+            # 가장 많이 사용된 페어 머지, 단어 사전에 추가
+            self.merges.append(best_pair)
+            self.id_to_token[next_id] = best_pair
+            self.token_to_id[best_pair] = next_id
+
+            ids = self._merge(ids, best_pair, next_id)
+            next_id += 1
 
     def save(self, path: str | Path):
         """
@@ -79,13 +113,67 @@ class BPETokenizer:
 
         bytes와 tuple은 JSON에 바로 저장할 수 없으므로 type 정보를 함께 저장하세요.
         """
-        raise NotImplementedError("BPETokenizer.save를 구현하세요.")
+        data = {
+            "vocab_size": self.vocab_size,
+            "merges": [],
+            "id_to_token": {}
+        }
+
+        for pair in self.merges:
+            data["merges"].append({
+                "pair": list(pair)
+            })
+        
+        for key, value in self.id_to_token.items():
+            if isinstance(value, bytes):
+                data["id_to_token"][str(key)] = {
+                    "type": "bytes",
+                    "value": list(value)
+                }
+            elif isinstance(value, str):
+                data["id_to_token"][str(key)] = {
+                    "type": "special",
+                    "value": value
+                }
+            else:
+                data["id_to_token"][str(key)] = {
+                    "type": "tuple",
+                    "value": value
+                }
+        
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
 
     def load(self, path: str | Path):
         """
         TODO: save()로 저장한 JSON 파일을 읽어 vocabulary와 merge rule을 복원합니다.
         """
-        raise NotImplementedError("BPETokenizer.load를 구현하세요.")
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        self.vocab_size = data["vocab_size"]
+
+        self.merges = []
+        for merge in data["merges"]:
+            pair = tuple(merge["pair"])
+            self.merges.append(pair)
+        
+        self.id_to_token = {}
+        self.token_to_id = {}
+        for key, value in data["id_to_token"].items():
+            new_id = int(key)
+            if value["type"] == "special":
+                v = str(value["value"])
+                self.id_to_token[new_id] = v
+                self.token_to_id[v] = new_id
+            elif value["type"] == "bytes":
+                v = bytes(value["value"])
+                self.id_to_token[new_id] = v
+                self.token_to_id[v] = new_id
+            else:
+                v = tuple(value["value"])
+                self.id_to_token[new_id] = v
+                self.token_to_id[v] = new_id
 
     def encode(self, text: str, add_bos_eos: bool = False) -> list[int]:
         """
@@ -96,7 +184,18 @@ class BPETokenizer:
         - train/load에서 얻은 merge rule을 학습 순서대로 적용합니다.
         - add_bos_eos=True이면 앞뒤에 bos/eos ID를 붙입니다.
         """
-        raise NotImplementedError("BPETokenizer.encode를 구현하세요.")
+        ids = [b + BYTE_OFFSET for b in text.encode("utf-8")]
+
+        for i, pair in enumerate(self.merges):
+            next_id = NUM_BYTES + BYTE_OFFSET + i
+            ids = self._merge(ids, pair, next_id)
+
+        if add_bos_eos:
+            ids.insert(0, self.get_bos_id())
+            ids.append(self.get_eos_id())
+        
+        return ids
+
 
     def decode(self, ids: list[int], skip_special: bool = True) -> str:
         """
@@ -106,4 +205,45 @@ class BPETokenizer:
         - merge token은 원본 byte token까지 재귀적으로 펼칩니다.
         - byte를 하나씩 decode하지 말고, 마지막에 `bytes(...).decode("utf-8")`를 한 번만 호출합니다.
         """
-        raise NotImplementedError("BPETokenizer.decode를 구현하세요.")
+        result = bytearray()
+        for id in ids:
+            if id in SPECIAL_IDS.values():
+                if skip_special:
+                    continue
+                result.extend(self.id_to_token[id].encode("utf-8"))
+                continue
+
+            stack=[id]
+            while stack:
+                cur_id = stack.pop()
+                token = self.id_to_token[cur_id]
+
+                if isinstance(token, bytes):
+                    result.extend(token)
+                else:
+                    left, right = token
+                    stack.append(right)
+                    stack.append(left)
+
+        return bytes(result).decode("utf-8")
+    
+    def _count_pairs(self, ids: list[int]) -> Counter[tuple[int, int]]:
+        counts = Counter()
+        # 페어 개수 세기
+        for pair in zip(ids, ids[1:]):
+            counts[pair] += 1
+
+        return counts
+    
+    def _merge(self, ids: list[int], pair: tuple[int, int], new_id: int) -> list[int]:
+        i = 0
+        result = list()
+        while i < len(ids):
+            if (i < len(ids) - 1) and (ids[i], ids[i+1]) == pair:
+                result.append(new_id)
+                i += 2
+            else:
+                result.append(ids[i])
+                i += 1
+
+        return result
