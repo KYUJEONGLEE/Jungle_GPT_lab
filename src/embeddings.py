@@ -47,7 +47,10 @@ class InputEmbedding(nn.Module):
         """
         
         token_embeddings = self.token_embedding(x)
-        pos = torch.arrange(self.context_length)
+        pos = torch.arange(x.shape[-1])
         position_embeddings = self.position_embedding(pos)
 
         input_embeddings = token_embeddings + position_embeddings
+        input_embeddings = self.dropout(input_embeddings)
+
+        return input_embeddings
