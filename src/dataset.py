@@ -40,7 +40,7 @@ class GPTDataset(Dataset):
             시작 i = 0 도 고려해야 하므로 i + 1
         """
         num_tokens = len(self.token_ids)
-        self._length = (num_tokens - self.context_length - 1) // self.stride + 1
+        self._length = max(0, (num_tokens - self.context_length - 1) // self.stride + 1)
 
     def __len__(self) -> int:
         """TODO: 전체 샘플 개수를 반환합니다."""
