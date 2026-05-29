@@ -23,15 +23,18 @@ class LayerNorm(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """TODO: 마지막 차원의 평균과 분산으로 정규화한 뒤 gamma/beta를 적용합니다."""
-        raise NotImplementedError("LayerNorm.forward를 구현하세요.")
-
+        mean = x.mean(dim=-1, keepdim=True)
+        var = x.var(dim=-1, keepdim=True, unbiased=False)
+        norm_x = (x - mean) / torch.sqrt(var + self.eps)
+        return self.gamma * norm_x + self.beta
 
 class GELU(nn.Module):
     """GPT FeedForward에서 사용하는 GELU 활성화 함수."""
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """TODO: tanh 근사식 또는 torch 연산으로 GELU를 구현합니다."""
-        raise NotImplementedError("GELU.forward를 구현하세요.")
+        return 0.5 * x * (1 + torch.tanh(torch.sqrt(torch.tensor(2.0 / torch.pi)) *
+                                         (x + 0.044715 * torch.pow(x, 3))))
 
 
 class FeedForward(nn.Module):
