@@ -54,8 +54,8 @@ class BPETokenizer:
             self.token_to_id[token] = token_id
         
         for i in range(BYTE_OFFSET, NUM_BYTES + BYTE_OFFSET):
-            self.id_to_token[i] = bytes([i-4])
-            self.token_to_id[bytes([i-4])] = i
+            self.id_to_token[i] = bytes([i-BYTE_OFFSET])
+            self.token_to_id[bytes([i-BYTE_OFFSET])] = i
 
     def get_pad_id(self):
         """padding 토큰 ID."""
@@ -96,6 +96,8 @@ class BPETokenizer:
             
             # 가장 많이 사용된 페어
             best_pair = max(pair_counts, key=pair_counts.get)
+            if pair_counts[best_pair] < 2:
+                break
 
             # 가장 많이 사용된 페어 머지, 단어 사전에 추가
             self.merges.append(best_pair)
@@ -184,7 +186,8 @@ class BPETokenizer:
         """
         ids = [b + BYTE_OFFSET for b in text.encode("utf-8")]
 
-        for pair, next_id in enumerate(self.merges):
+        for i, pair in enumerate(self.merges):
+            next_id = NUM_BYTES + BYTE_OFFSET + i
             ids = self._merge(ids, pair, next_id)
 
         if add_bos_eos:
@@ -207,13 +210,20 @@ class BPETokenizer:
             if id in SPECIAL_IDS.values():
                 if skip_special:
                     continue
+                result.extend(self.id_to_token[id].encode("utf-8"))
+                continue
 
-            tmp = self.id_to_token[id]
+            stack=[id]
+            while stack:
+                cur_id = stack.pop()
+                token = self.id_to_token[cur_id]
 
-            if isinstance(tmp, str):
-                result.extend(tmp.encode("utf-8"))
-            else:
-                result.extend(tmp)
+                if isinstance(token, bytes):
+                    result.extend(token)
+                else:
+                    left, right = token
+                    stack.append(right)
+                    stack.append(left)
 
         return bytes(result).decode("utf-8")
     
