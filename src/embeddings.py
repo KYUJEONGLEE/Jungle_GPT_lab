@@ -45,7 +45,7 @@ class InputEmbedding(nn.Module):
         """
         
         token_embeddings = self.token_embedding(x)
-        pos = torch.arange(x.shape[-1])
+        pos = torch.arange(x.shape[-1], device=x.device)
         position_embeddings = self.position_embedding(pos)
 
         input_embeddings = token_embeddings + position_embeddings
