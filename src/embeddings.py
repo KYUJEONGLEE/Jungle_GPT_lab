@@ -28,12 +28,10 @@ class InputEmbedding(nn.Module):
         self.context_length = context_length
         # TODO: token_embedding, position_embedding, dropout을 정의하세요.
         
-        if vocab_size > 0 and emb_dim > 0 and context_length > 0:
-            self.token_embedding = nn.Embedding(vocab_size, emb_dim)
-            self.position_embedding = nn.Embedding(context_length, emb_dim)
+        self.token_embedding = nn.Embedding(vocab_size, emb_dim)
+        self.position_embedding = nn.Embedding(context_length, emb_dim)
 
-        if drop_rate >= 0 and drop_rate <= 1:
-            self.dropout = nn.Dropout(drop_rate)
+        self.dropout = nn.Dropout(drop_rate)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
