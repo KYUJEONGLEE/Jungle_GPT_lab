@@ -31,11 +31,9 @@ class LayerNorm(nn.Module):
 
 class GELU(nn.Module):
     """GPT FeedForward에서 사용하는 GELU 활성화 함수."""
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """TODO: tanh 근사식 또는 torch 연산으로 GELU를 구현합니다."""
-        return 0.5 * x * (1 + torch.tanh(torch.sqrt(torch.tensor(2.0 / torch.pi)) *
-                                         (x + 0.044715 * torch.pow(x, 3))))
+        return 0.5 * x * (1 + torch.tanh(0.7978845608028654 * (x + 0.044715 * torch.pow(x, 3))))
 
 
 class FeedForward(nn.Module):
@@ -47,7 +45,8 @@ class FeedForward(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(d_model, mult * d_model),
             GELU(),
-            nn.Linear(mult * d_model, d_model)
+            nn.Linear(mult * d_model, d_model),
+            nn.Dropout(dropout)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -71,7 +70,7 @@ class TransformerBlock(nn.Module):
         super().__init__()
         # TODO: attention, ffn, layernorm, dropout을 정의하세요.
         self.attention = MultiHeadAttention(d_model, n_heads, drop_rate, qkv_bias)
-        self.ffn = FeedForward(d_model)
+        self.ffn = FeedForward(d_model, dropout=drop_rate)
         self.layernorm1 = LayerNorm(d_model)
         self.layernorm2 = LayerNorm(d_model)
         self.dropout = nn.Dropout(drop_rate)
@@ -87,7 +86,6 @@ class TransformerBlock(nn.Module):
         short_cut = x
         x = self.layernorm2(x)
         x = self.ffn(x)
-        x = self.dropout(x)
         x = x + short_cut
 
         return x
@@ -165,8 +163,7 @@ def generate_text_simple(
             logits = model(idx_cond)
 
         logits = logits[:, -1, :]
-        probas = torch.softmax(logits, dim=-1)
-        idx_next = torch.argmax(probas, dim=-1, keepdim=True)
+        idx_next = torch.argmax(logits, dim=-1, keepdim=True)
         idx = torch.cat((idx, idx_next), dim=1)
 
     return idx
