@@ -3,6 +3,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 try:
     from .attention import MultiHeadAttention
@@ -142,7 +143,13 @@ class GPTModel(nn.Module):
 
         if targets is None:
             return logits
-        # cross entropy loss는 일단 제외
+
+        loss = F.cross_entropy(
+            logits.reshape(-1, logits.size(-1)),
+            targets.reshape(-1),
+        )
+
+        return loss, logits
 
 
 def generate_text_simple(
