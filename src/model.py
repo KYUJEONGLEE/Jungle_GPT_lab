@@ -69,7 +69,7 @@ class TransformerBlock(nn.Module):
     ):
         super().__init__()
         # TODO: attention, ffn, layernorm, dropout을 정의하세요.
-        self.attention = MultiHeadAttention()
+        self.attention = MultiHeadAttention(d_model, n_heads, drop_rate, qkv_bias)
         self.ffn = FeedForward(d_model)
         self.layernorm1 = LayerNorm(d_model)
         self.layernorm2 = LayerNorm(d_model)
@@ -79,7 +79,7 @@ class TransformerBlock(nn.Module):
         """TODO: attention과 ffn을 residual connection으로 연결합니다."""
         short_cut = x
         x = self.layernorm1(x)
-        x = self.attention(x)
+        x = self.attention(x, causal_mask=causal_mask)
         x = self.dropout(x)
         x = x + short_cut
 
@@ -98,7 +98,30 @@ class GPTModel(nn.Module):
         super().__init__()
         self.config = config
         # TODO: embedding, blocks, final layernorm, lm_head를 정의하세요.
-        raise NotImplementedError("GPTModel.__init__을 구현하세요.")
+        self.embedding = InputEmbedding(
+            config["vocab_size"],
+            config["emb_dim"],
+            config["context_length"],
+            config["drop_rate"],
+        )
+
+        blocks = []
+        for _ in range(config["n_layers"]):
+            block = TransformerBlock(
+                config["emb_dim"],
+                config["n_heads"],
+                config["drop_rate"],
+                config["qkv_bias"],
+            )
+            blocks.append(block)
+
+        self.blocks = nn.Sequential(*blocks)
+        self.final_layernorm = LayerNorm(config["emb_dim"])
+        self.lm_head = nn.Linear(
+            config["emb_dim"],
+            config["vocab_size"],
+            bias=False
+        )
 
     def forward(
         self,
@@ -112,7 +135,14 @@ class GPTModel(nn.Module):
             targets가 None이면 logits
             targets가 있으면 (loss, logits)
         """
-        raise NotImplementedError("GPTModel.forward를 구현하세요.")
+        x = self.embedding(idx)
+        x = self.blocks(x)
+        x = self.final_layernorm(x)
+        logits = self.lm_head(x)
+
+        if targets is None:
+            return logits
+        # cross entropy loss는 일단 제외
 
 
 def generate_text_simple(
