@@ -69,12 +69,27 @@ class TransformerBlock(nn.Module):
     ):
         super().__init__()
         # TODO: attention, ffn, layernorm, dropout을 정의하세요.
-        raise NotImplementedError("TransformerBlock.__init__을 구현하세요.")
+        self.attention = MultiHeadAttention()
+        self.ffn = FeedForward(d_model)
+        self.layernorm1 = LayerNorm(d_model)
+        self.layernorm2 = LayerNorm(d_model)
+        self.dropout = nn.Dropout(drop_rate)
 
     def forward(self, x: torch.Tensor, causal_mask: bool = True) -> torch.Tensor:
         """TODO: attention과 ffn을 residual connection으로 연결합니다."""
-        raise NotImplementedError("TransformerBlock.forward를 구현하세요.")
+        short_cut = x
+        x = self.layernorm1(x)
+        x = self.attention(x)
+        x = self.dropout(x)
+        x = x + short_cut
 
+        short_cut = x
+        x = self.layernorm2(x)
+        x = self.ffn(x)
+        x = self.dropout(x)
+        x = x + short_cut
+
+        return x
 
 class GPTModel(nn.Module):
     """InputEmbedding -> TransformerBlock N개 -> LayerNorm -> LM head."""
