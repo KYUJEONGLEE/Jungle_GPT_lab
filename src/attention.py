@@ -134,7 +134,6 @@ class MultiHeadAttention(nn.Module):
         # head별로 나뉘어 있던 결과를 다시 합치는 과정
         # (B, H, T, D) -> transpose를 통해 (B, T, H, D)
         # H * D = C 이므로 view를 통해 다시 (B, T, C)로 바꾼다.
-        # contiguous()?? 잘모르겟
         context = context.transpose(1, 2).contiguous().view(batch_size, seq_len, d_model)
 
         # 합쳐진 context를 output projection에 통과시킨다.
