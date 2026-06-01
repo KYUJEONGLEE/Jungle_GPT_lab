@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 import random
+import torch.nn.functional as F
 
 try:
     from .model import GPTModel
@@ -91,7 +92,6 @@ class ReviewSentimentDataset(Dataset):
             encoded_text = encoded_text[:self.max_length]
         else:
             pad_size = self.max_length - len(encoded_text)
-            # 남은 부분을 padding으로 채운다
             padding_list = [self.pad_id] * pad_size
             encoded_text += padding_list
 
@@ -115,7 +115,11 @@ class GPTForSequenceClassification(nn.Module):
         self.gpt = gpt_model
         self.num_labels = num_labels
         # TODO: dropout과 classifier를 정의하세요. classifier 입력 차원은 gpt_model.config["emb_dim"]입니다.
-        raise NotImplementedError("GPTForSequenceClassification.__init__을 구현하세요.")
+        self.dropout = nn.Dropout(drop_rate)
+        self.classifier = nn.Linear(
+            in_features=self.gpt.config["emb_dim"],
+            out_features=self.num_labels
+        )
 
     def forward(
         self,
@@ -127,8 +131,22 @@ class GPTForSequenceClassification(nn.Module):
 
         labels가 있으면 (loss, logits), 없으면 logits를 반환합니다.
         """
-        raise NotImplementedError("GPTForSequenceClassification.forward를 구현하세요.")
+        # GPT hidden state에서 문장 대표 벡터?
+        # => padding이 아닌 마지막 token
+        hidden_state = self.gpt.embedding(input_ids)
+        hidden_state = self.gpt.blocks(hidden_state)
+        hidden_state = self.gpt.final_layernorm(hidden_state)
+        hidden_state = hidden_state[:, -1, :]
 
+        logits = self.dropout(hidden_state)
+        logits = self.classifier(logits)
+
+        if labels is None:
+            return logits
+
+        loss = F.cross_entropy(logits, labels)
+
+        return (loss, logits)
 
 def train_epoch_sentiment(
     model: GPTForSequenceClassification,
