@@ -181,8 +181,32 @@ def train_epoch_sentiment(
     device: torch.device,
 ) -> tuple[float, float]:
     """TODO: 감성 분류 모델을 1 epoch 훈련하고 (평균 loss, accuracy)를 반환합니다."""
-    raise NotImplementedError("train_epoch_sentiment를 구현하세요.")
+    correct_predictions = 0
+    total = 0
+    total_loss = 0
 
+    model.train()
+
+    for input_batch, target_batch in train_loader:
+        optimizer.zero_grad()
+        input_batch = input_batch.to(device)
+        target_batch = target_batch.to(device)
+
+        loss, logits = model(input_batch, target_batch)
+
+        loss.backward()
+        optimizer.step()
+
+        predicted_label = torch.argmax(logits, dim=-1)
+        correct_predictions += (predicted_label == target_batch).sum().item()
+        total += target_batch.size(0)
+
+        total_loss += loss.item() * target_batch.size(0)
+
+    accuracy = correct_predictions / total
+    avg_loss = total_loss / total
+
+    return avg_loss, accuracy
 
 def evaluate_sentiment(
     model: GPTForSequenceClassification,
@@ -190,4 +214,12 @@ def evaluate_sentiment(
     device: torch.device,
 ) -> tuple[float, float]:
     """TODO: 감성 분류 모델을 평가하고 (평균 loss, accuracy)를 반환합니다."""
-    raise NotImplementedError("evaluate_sentiment를 구현하세요.")
+    model.eval()
+    model.zero_grad()
+
+    for input_batch, target_batch in data_loader:
+        input_batch = input_batch.to(device)
+        target_batch = target_batch.to(device)
+
+        loss, logits = model(input_batch, target_batch)
+        
