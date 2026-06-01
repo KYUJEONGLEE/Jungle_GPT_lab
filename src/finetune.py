@@ -6,6 +6,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
+import random
 
 try:
     from .model import GPTModel
@@ -26,8 +27,42 @@ def make_sentiment_dataset(
     반환 형식:
         [{"text": "리뷰", "label": 0 또는 1}, ...]
     """
-    raise NotImplementedError("make_sentiment_dataset을 구현하세요.")
+    def load_tsv(path):
+        dataset = []
 
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            lines = lines[1:]
+
+            for line in lines:
+                line = line.split('\t')
+                # line[0]: id, line[1]: document, line[2]: label
+                if len(line) != 3:
+                    continue
+                document = line[1]
+                label = int(line[2].rstrip())
+
+                if document == "":
+                    continue
+
+                pair = {}
+                pair["text"] = document
+                pair["label"] = label
+
+                dataset.append(pair)
+            return dataset
+
+    train_data = load_tsv(train_tsv_path)
+    test_dataset = load_tsv(test_tsv_path)
+
+    random.seed(seed)
+    random.shuffle(train_data)
+
+    split_num = int(len(train_data) * val_ratio)
+    train_dataset = train_data[:split_num]
+    val_dataset = train_data[split_num:]
+
+    return train_dataset, val_dataset, test_dataset
 
 class ReviewSentimentDataset(Dataset):
     """감성 분류용 Dataset. 리뷰 하나와 label 하나를 반환합니다."""
