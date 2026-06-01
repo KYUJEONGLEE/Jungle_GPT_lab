@@ -47,13 +47,14 @@ def calc_loss_loader(
     else:
         num_batches = min(num_batches, len(data_loader))
 
-    for batch_idx, (input_batch, target_batch) in enumerate(data_loader):
-        if batch_idx >= num_batches:
-            break
+    with torch.no_grad():
+        for batch_idx, (input_batch, target_batch) in enumerate(data_loader):
+            if batch_idx >= num_batches:
+                break
 
-        loss = calc_loss_batch(input_batch, target_batch, model, device)
+            loss = calc_loss_batch(input_batch, target_batch, model, device)
 
-        total_loss += loss.item()
+            total_loss += loss.item()
     
     return total_loss / num_batches
 
@@ -90,7 +91,6 @@ def load_checkpoint(
 
     epoch = checkpoint["epoch"]
     global_step = checkpoint["global_step"]
-    model.train()
 
     return epoch, global_step
 
@@ -146,6 +146,7 @@ def generate_and_print_sample(
     top_k: int | None = 40,
 ) -> None:
     """TODO: start_context를 encode하고 generate 후 decode하여 출력합니다."""
+    was_training = model.training
     model.eval()  # 드롭아웃 비활성화
     encoded = text_to_token_ids(start_context, tokenizer).to(device)
     
@@ -155,7 +156,8 @@ def generate_and_print_sample(
     decoded_text = token_ids_to_text(token_ids, tokenizer)
     print(decoded_text.replace("\n", " "))
 
-    model.train()
+    if was_training:
+        model.train()
 
 
 def train_model(
@@ -238,6 +240,7 @@ def token_ids_to_text(token_ids, tokenizer):
     return tokenizer.decode(flat.tolist())
 
 def evaluate_model(model, train_loader, val_loader, device, eval_iter):
+    was_training = model.training
     model.eval()
 
     with torch.no_grad():
@@ -245,5 +248,6 @@ def evaluate_model(model, train_loader, val_loader, device, eval_iter):
 
         val_loss = calc_loss_loader(val_loader, model, device, eval_iter)
 
+    if was_training:
         model.train()
-        return train_loss, val_loss
+    return train_loss, val_loss
