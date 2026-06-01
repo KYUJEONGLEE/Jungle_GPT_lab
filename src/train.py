@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """GPT 사전 학습 유틸리티 과제 템플릿."""
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
@@ -178,7 +180,7 @@ def train_model(
 
     token_seen = 0
 
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         model.train()
 
         for input_batch, target_batch in train_loader:
@@ -191,23 +193,28 @@ def train_model(
             token_seen += input_batch.numel()
             global_step += 1
 
-            if global_step % eval_freq == 0:
+            if eval_freq is not None and eval_freq > 0 and global_step % eval_freq == 0:
                 train_loss, val_loss = evaluate_model(model, train_loader, val_loader, device, eval_iter)
             
-            train_losses.append(train_loss)
-            val_losses.append(val_loss)
-            track_tokens_seen.append(token_seen)
+                train_losses.append(train_loss)
+                val_losses.append(val_loss)
+                track_tokens_seen.append(token_seen)
 
-            print(
-                f"Ep {epoch + 1} "
-                f"(Step {global_step:06d}): "
-                f"Train loss {train_loss:.3f}, "
-                f"Val loss {val_loss:.3f}"
-            )
+                print(
+                    f"Ep {epoch + 1} "
+                    f"(Step {global_step:06d}): "
+                    f"Train loss {train_loss:.3f}, "
+                    f"Val loss {val_loss:.3f}"
+                )
+        
+        if ckpt_freq is not None and (epoch + 1) % ckpt_freq == 0:
+            path = Path("checkpoints") / f"ckpt_epoch_{epoch + 1}.pt"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            save_checkpoint(model, optimizer, epoch + 1, global_step, str(path))
     
         generate_and_print_sample(model,tokenizer, device, start_context)
 
-    return train_losses, val_losses, track_tokens_seen
+    return train_losses
 
 
 def plot_losses(train_losses: list[float], val_losses: list[float] | None = None) -> None:
