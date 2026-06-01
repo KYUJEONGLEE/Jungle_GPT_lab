@@ -88,7 +88,32 @@ def generate(
 ) -> torch.Tensor:
     """TODO: temperature와 top-k 샘플링을 지원하는 생성 함수를 구현합니다."""
     
-    for _ in 
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:, -context_size:]
+
+        with torch.no_grad():
+            logits = model(idx_cond)
+        
+        logits = logits[:, -1, :]
+
+        if top_k is not None:
+            top_logits, _ = torch.topk(logits, top_k)
+            min_val = top_logits[:, -1]
+            logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
+
+        if temperature > 0.0:
+            logits = logits / temperature
+            probs = torch.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
+        else:
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)
+        
+        if idx_next.item() == eos_id:
+            break
+
+        idx = torch.cat((idx, idx_next), dim=1)
+    
+    return idx
 
 
 def generate_and_print_sample(
@@ -102,7 +127,16 @@ def generate_and_print_sample(
     top_k: int | None = 40,
 ) -> None:
     """TODO: start_context를 encode하고 generate 후 decode하여 출력합니다."""
-    raise NotImplementedError("generate_and_print_sample을 구현하세요.")
+    model.eval()  # 드롭아웃 비활성화
+    encoded = text_to_token_ids(start_context, tokenizer).to(device)
+    
+    with torch.no_grad():
+        token_ids = generate(model, encoded, max_new_tokens, context_size, temperature, top_k)
+
+    decoded_text = token_ids_to_text(token_ids, tokenizer)
+    print(decoded_text.replace("\n", " "))
+
+    model.train()
 
 
 def train_model(
@@ -134,3 +168,12 @@ def plot_losses(train_losses: list[float], val_losses: list[float] | None = None
     plt.legend()
     plt.title("Training / Validation Loss")
     plt.show()
+
+def text_to_token_ids(text, tokenizer):
+    encoded = tokenizer.encode(text)
+    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+    return encoded_tensor
+
+def token_ids_to_text(token_ids, tokenizer):
+    flat = token_ids.squeeze(0)
+    return tokenizer.decode(flat.tolist())
