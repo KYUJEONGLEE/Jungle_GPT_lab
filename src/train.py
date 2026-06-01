@@ -3,6 +3,7 @@
 
 import matplotlib.pyplot as plt
 import torch
+import torch.nn.functional as F
 
 try:
     from .model import GPTModel
@@ -17,7 +18,14 @@ def calc_loss_batch(
     device: torch.device,
 ) -> torch.Tensor:
     """TODO: 한 배치를 device로 옮긴 뒤 다음 토큰 예측 cross entropy loss를 계산합니다."""
-    raise NotImplementedError("calc_loss_batch를 구현하세요.")
+    input_batch = input_batch.to(device)
+    target_batch = target_batch.to(device)
+
+    logits = model(input_batch)
+
+    loss = F.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
+
+    return loss
 
 
 def calc_loss_loader(
@@ -27,7 +35,25 @@ def calc_loss_loader(
     num_batches: int | None = None,
 ) -> float:
     """TODO: data_loader의 평균 loss를 계산합니다. 검증에서는 torch.no_grad()를 사용하세요."""
-    raise NotImplementedError("calc_loss_loader를 구현하세요.")
+    total_loss = 0.0
+    
+    if len(data_loader) == 0:
+        return float("nan")
+    
+    if num_batches is None:
+        num_batches = len(data_loader)
+    else:
+        num_batches = min(num_batches, len(data_loader))
+
+    for batch_idx, (input_batch, target_batch) in enumerate(data_loader):
+        if batch_idx >= num_batches:
+            break
+
+        loss = calc_loss_batch(input_batch, target_batch, model, device)
+
+        total_loss += loss.item()
+    
+    return total_loss / num_batches
 
 
 def save_checkpoint(
@@ -61,7 +87,8 @@ def generate(
     eos_id: int | None = None,
 ) -> torch.Tensor:
     """TODO: temperature와 top-k 샘플링을 지원하는 생성 함수를 구현합니다."""
-    raise NotImplementedError("generate를 구현하세요.")
+    
+    for _ in 
 
 
 def generate_and_print_sample(
