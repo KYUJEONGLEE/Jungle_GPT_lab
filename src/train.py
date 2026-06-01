@@ -96,10 +96,11 @@ def generate(
         
         logits = logits[:, -1, :]
 
-        if top_k is not None:
+        if top_k is not None and top_k > 0:
+            top_k = min(top_k, logits.size(-1))
             top_logits, _ = torch.topk(logits, top_k)
-            min_val = top_logits[:, -1]
-            logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
+            min_val = top_logits[:, -1].unsqueeze(-1)
+            logits = logits.masked_fill(logits < min_val, float("-inf"))
 
         if temperature > 0.0:
             logits = logits / temperature
@@ -108,7 +109,7 @@ def generate(
         else:
             idx_next = torch.argmax(logits, dim=-1, keepdim=True)
         
-        if idx_next.item() == eos_id:
+        if eos_id is not None and torch.all(idx_next == eos_id):
             break
 
         idx = torch.cat((idx, idx_next), dim=1)
@@ -155,7 +156,42 @@ def train_model(
     global_step: int = 0,
 ) -> list[float]:
     """TODO: 사전 학습 루프를 구현하고 epoch별 train loss 리스트를 반환합니다."""
-    raise NotImplementedError("train_model을 구현하세요.")
+    train_losses = list()
+    val_losses = list()
+    track_tokens_seen = list()
+
+    token_seen = 0
+
+    for epoch in range(num_epochs):
+        model.train()
+
+        for input_batch, target_batch in train_loader:
+            optimizer.zero_grad()
+
+            loss = calc_loss_batch(input_batch, target_batch, model, device)
+            loss.backward()
+            optimizer.step()
+
+            token_seen += input_batch.numel()
+            global_step += 1
+
+            if global_step % eval_freq == 0:
+                train_loss, val_loss = evaluate_model(model, train_loader, val_loader, device, eval_iter)
+            
+            train_losses.append(train_loss)
+            val_losses.append(val_loss)
+            track_tokens_seen.append(token_seen)
+
+            print(
+                f"Ep {epoch + 1} "
+                f"(Step {global_step:06d}): "
+                f"Train loss {train_loss:.3f}, "
+                f"Val loss {val_loss:.3f}"
+            )
+    
+        generate_and_print_sample(model,tokenizer, device, start_context)
+
+    return train_losses, val_losses, track_tokens_seen
 
 
 def plot_losses(train_losses: list[float], val_losses: list[float] | None = None) -> None:
@@ -177,3 +213,14 @@ def text_to_token_ids(text, tokenizer):
 def token_ids_to_text(token_ids, tokenizer):
     flat = token_ids.squeeze(0)
     return tokenizer.decode(flat.tolist())
+
+def evaluate_model(model, train_loader, val_loader, device, eval_iter):
+    model.eval()
+
+    with torch.no_grad():
+        train_loss = calc_loss_loader(train_loader, model, device, num_batches=eval_iter)
+
+        val_loss = calc_loss_loader(val_loader, model, device, eval_iter)
+
+        model.train()
+        return train_loss, val_loss
