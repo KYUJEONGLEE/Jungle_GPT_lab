@@ -6,6 +6,8 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
+import random
+import torch.nn.functional as F
 
 try:
     from .model import GPTModel
@@ -26,8 +28,45 @@ def make_sentiment_dataset(
     반환 형식:
         [{"text": "리뷰", "label": 0 또는 1}, ...]
     """
-    raise NotImplementedError("make_sentiment_dataset을 구현하세요.")
+    def load_tsv(path):
+        dataset = []
 
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            lines = lines[1:]
+
+            for line in lines:
+                line = line.split('\t')
+                # line[0]: id, line[1]: document, line[2]: label
+                if len(line) != 3:
+                    continue
+                document = line[1]
+                label = int(line[2].rstrip())
+
+                if document == "":
+                    continue
+
+                pair = {}
+                pair["text"] = document
+                pair["label"] = label
+
+                dataset.append(pair)
+            return dataset
+
+    if train_tsv_path is None:
+        raise ValueError("train_tsv_path는 필수 매개변수입니다.")
+
+    train_data = load_tsv(train_tsv_path)
+    test_dataset = load_tsv(test_tsv_path) if test_tsv_path is not None else []
+
+    random.seed(seed)
+    random.shuffle(train_data)
+
+    split_num = int(len(train_data) * val_ratio)
+    val_dataset = train_data[:split_num]
+    train_dataset = train_data[split_num:]
+
+    return train_dataset, val_dataset, test_dataset
 
 class ReviewSentimentDataset(Dataset):
     """감성 분류용 Dataset. 리뷰 하나와 label 하나를 반환합니다."""
@@ -49,7 +88,17 @@ class ReviewSentimentDataset(Dataset):
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         """TODO: text를 encode하고 max_length까지 자르거나 padding한 뒤 label과 함께 반환합니다."""
-        raise NotImplementedError("ReviewSentimentDataset.__getitem__을 구현하세요.")
+        encoded_text = self.tokenizer.encode(self.data[idx]["text"])
+        label = self.data[idx]["label"]
+
+        if len(encoded_text) > self.max_length:
+            encoded_text = encoded_text[:self.max_length]
+        else:
+            pad_size = self.max_length - len(encoded_text)
+            padding_list = [self.pad_id] * pad_size
+            encoded_text += padding_list
+
+        return (torch.tensor(encoded_text, dtype=torch.long), torch.tensor(label, dtype=torch.long))
 
 
 class GPTForSequenceClassification(nn.Module):
@@ -69,7 +118,11 @@ class GPTForSequenceClassification(nn.Module):
         self.gpt = gpt_model
         self.num_labels = num_labels
         # TODO: dropout과 classifier를 정의하세요. classifier 입력 차원은 gpt_model.config["emb_dim"]입니다.
-        raise NotImplementedError("GPTForSequenceClassification.__init__을 구현하세요.")
+        self.dropout = nn.Dropout(drop_rate)
+        self.classifier = nn.Linear(
+            in_features=self.gpt.config["emb_dim"],
+            out_features=self.num_labels
+        )
 
     def forward(
         self,
@@ -81,8 +134,30 @@ class GPTForSequenceClassification(nn.Module):
 
         labels가 있으면 (loss, logits), 없으면 logits를 반환합니다.
         """
-        raise NotImplementedError("GPTForSequenceClassification.forward를 구현하세요.")
 
+        # GPT hidden state에서 문장 대표 벡터?
+        # => padding이 아닌 마지막 token
+        hidden_state = self.gpt.embedding(input_ids)
+        hidden_state = self.gpt.blocks(hidden_state)
+        hidden_state = self.gpt.final_layernorm(hidden_state)
+
+        pad_id = 0
+        non_pad_mask = (input_ids != pad_id)
+        token_counts = non_pad_mask.sum(dim=-1)
+        last_positions = (token_counts - 1).clamp(min=0)
+        batch_positions = torch.arange(
+            input_ids.shape[0], device=input_ids.device)
+        hidden_state = hidden_state[batch_positions, last_positions]
+
+        logits = self.dropout(hidden_state)
+        logits = self.classifier(logits)
+
+        if labels is None:
+            return logits
+
+        loss = F.cross_entropy(logits, labels)
+
+        return (loss, logits)
 
 def train_epoch_sentiment(
     model: GPTForSequenceClassification,
@@ -91,8 +166,32 @@ def train_epoch_sentiment(
     device: torch.device,
 ) -> tuple[float, float]:
     """TODO: 감성 분류 모델을 1 epoch 훈련하고 (평균 loss, accuracy)를 반환합니다."""
-    raise NotImplementedError("train_epoch_sentiment를 구현하세요.")
+    correct_predictions = 0
+    total = 0
+    total_loss = 0
 
+    model.train()
+
+    for input_batch, target_batch in train_loader:
+        optimizer.zero_grad()
+        input_batch = input_batch.to(device)
+        target_batch = target_batch.to(device)
+
+        loss, logits = model(input_batch, target_batch)
+
+        loss.backward()
+        optimizer.step()
+
+        predicted_label = torch.argmax(logits, dim=-1)
+        correct_predictions += (predicted_label == target_batch).sum().item()
+        total += target_batch.size(0)
+
+        total_loss += loss.item() * target_batch.size(0)
+
+    accuracy = correct_predictions / total
+    avg_loss = total_loss / total
+
+    return avg_loss, accuracy
 
 def evaluate_sentiment(
     model: GPTForSequenceClassification,
@@ -100,4 +199,26 @@ def evaluate_sentiment(
     device: torch.device,
 ) -> tuple[float, float]:
     """TODO: 감성 분류 모델을 평가하고 (평균 loss, accuracy)를 반환합니다."""
-    raise NotImplementedError("evaluate_sentiment를 구현하세요.")
+    correct_predictions = 0
+    total = 0
+    total_loss = 0.0
+
+    model.eval()
+
+    with torch.no_grad():
+        for input_batch, target_batch in data_loader:
+            input_batch = input_batch.to(device)
+            target_batch = target_batch.to(device)
+
+            loss, logits = model(input_batch, target_batch)
+
+            predicted_label = torch.argmax(logits, dim=-1)
+            correct_predictions += (predicted_label == target_batch).sum().item()
+            total += target_batch.size(0)
+
+            total_loss += loss.item() * target_batch.size(0)
+
+    accuracy = correct_predictions / total
+    avg_loss = total_loss / total
+
+    return avg_loss, accuracy
