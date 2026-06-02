@@ -53,8 +53,11 @@ def make_sentiment_dataset(
                 dataset.append(pair)
             return dataset
 
+    if train_tsv_path is None:
+        raise ValueError("train_tsv_path는 필수 매개변수입니다.")
+
     train_data = load_tsv(train_tsv_path)
-    test_dataset = load_tsv(test_tsv_path)
+    test_dataset = load_tsv(test_tsv_path) if test_tsv_path is not None else []
 
     random.seed(seed)
     random.shuffle(train_data)
