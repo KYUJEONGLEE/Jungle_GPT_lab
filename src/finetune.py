@@ -142,29 +142,11 @@ class GPTForSequenceClassification(nn.Module):
         hidden_state = self.gpt.final_layernorm(hidden_state)
 
         pad_id = 0
-        # pad가 아닌 곳 찾기
-        # batch마다(문장마다) pad가 아닌곳은 TRUE, pad인 곳은 False표시
-        is_real_token = []
-        for sentence in input_ids:
-            row = []
-            for token_id in sentence:
-                if token_id != pad_id:
-                    row.append(True)
-                else:
-                    row.append(False)
-            is_real_token.append(row)
-        # 실제 토큰의 개수 count
-        token_counts = [sum(row) for row in is_real_token]
-        # 마지막에 위치한 토큰의 위치
-        last_positions = [count - 1 for count in token_counts]
-        # 몇 번째 리뷰인지(device ~ : 이 부분은 gpu에서도 돌리기 위함)
-        batch_positions = torch.arange(input_ids.shape[0], device=input_ids.device)
-        # batch_positions = [0, 1, 2]
-        # last_positions  = [4, 6, 3]
-        # 이러면 꺼내는 위치는
-        # hidden_state[0, 4]
-        # hidden_state[1, 6]
-        # hidden_state[2, 3]
+        non_pad_mask = (input_ids != pad_id)
+        token_counts = non_pad_mask.sum(dim=-1)
+        last_positions = (token_counts - 1).clamp(min=0)
+        batch_positions = torch.arange(
+            input_ids.shape[0], device=input_ids.device)
         hidden_state = hidden_state[batch_positions, last_positions]
 
         logits = self.dropout(hidden_state)
