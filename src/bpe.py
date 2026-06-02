@@ -197,7 +197,7 @@ class BPETokenizer:
         return ids
 
 
-    def decode(self, ids: list[int], skip_special: bool = True) -> str:
+    def decode(self, ids: list[int], skip_special: bool = True, errors: str = "strict",) -> str:
         """
         TODO: token ID 리스트를 문자열로 복원합니다.
 
@@ -225,7 +225,7 @@ class BPETokenizer:
                     stack.append(right)
                     stack.append(left)
 
-        return bytes(result).decode("utf-8")
+        return bytes(result).decode("utf-8", errors=errors)
     
     def _count_pairs(self, ids: list[int]) -> Counter[tuple[int, int]]:
         counts = Counter()

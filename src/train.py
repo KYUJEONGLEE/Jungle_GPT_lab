@@ -237,7 +237,7 @@ def text_to_token_ids(text, tokenizer):
 
 def token_ids_to_text(token_ids, tokenizer):
     flat = token_ids.squeeze(0)
-    return tokenizer.decode(flat.tolist())
+    return tokenizer.decode(flat.tolist(), errors="replace")
 
 def evaluate_model(model, train_loader, val_loader, device, eval_iter):
     was_training = model.training
