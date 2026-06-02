@@ -60,8 +60,8 @@ def make_sentiment_dataset(
     random.shuffle(train_data)
 
     split_num = int(len(train_data) * val_ratio)
-    train_dataset = train_data[:split_num]
-    val_dataset = train_data[split_num:]
+    val_dataset = train_data[:split_num]
+    train_dataset = train_data[split_num:]
 
     return train_dataset, val_dataset, test_dataset
 
@@ -214,12 +214,26 @@ def evaluate_sentiment(
     device: torch.device,
 ) -> tuple[float, float]:
     """TODO: 감성 분류 모델을 평가하고 (평균 loss, accuracy)를 반환합니다."""
+    correct_predictions = 0
+    total = 0
+    total_loss = 0.0
+
     model.eval()
-    model.zero_grad()
 
-    for input_batch, target_batch in data_loader:
-        input_batch = input_batch.to(device)
-        target_batch = target_batch.to(device)
+    with torch.no_grad():
+        for input_batch, target_batch in data_loader:
+            input_batch = input_batch.to(device)
+            target_batch = target_batch.to(device)
 
-        loss, logits = model(input_batch, target_batch)
-        
+            loss, logits = model(input_batch, target_batch)
+
+            predicted_label = torch.argmax(logits, dim=-1)
+            correct_predictions += (predicted_label == target_batch).sum().item()
+            total += target_batch.size(0)
+
+            total_loss += loss.item() * target_batch.size(0)
+
+    accuracy = correct_predictions / total
+    avg_loss = total_loss / total
+
+    return avg_loss, accuracy
