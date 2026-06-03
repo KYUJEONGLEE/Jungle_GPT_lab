@@ -72,47 +72,109 @@
 | 항목 | 내용 |
 | --- | --- |
 | 구현 파일 | `src/model.py` |
-| 전체 구조 | InputEmbedding -> N x TransformerBlock -> LayerNorm -> LM head |
-| vocab_size | (예: 3000) |
-| context_length | (예: 128) |
-| emb_dim | (예: 192) |
-| n_heads | (예: 4) |
-| n_layers | (예: 4) |
-| drop_rate | (예: 0.1) |
-| qkv_bias | True / False |
-| 총 파라미터 수 | (계산식 포함) |
+| 전체 구조 | InputEmbedding -> 4 x TransformerBlock -> LayerNorm -> LM head |
+| vocab_size | 3000 |
+| context_length | 128 |
+| emb_dim | 256 |
+| n_heads | 4 |
+| n_layers | 4 |
+| drop_rate | 0.15 |
+| qkv_bias | False |
+| stride | 64 |
+| learning_rate | 2e-4 |
+| weight_decay | 0.03 |
+| eval_freq | 200 |
+| eval_iter | 10 |
+| 총 파라미터 수 | 4,725,248 |
 
 ---
 
 ## 6. 사전 학습
 
-### 6.1 하이퍼파라미터
+### 6.1.1 1차 시도
 
 | 구분 | 항목 | 값 |
 | --- | --- | --- |
-| 모델 | vocab_size |  |
-| 모델 | context_length |  |
-| 모델 | emb_dim |  |
-| 모델 | n_heads |  |
-| 모델 | n_layers |  |
-| 학습 | batch_size |  |
-| 학습 | num_epochs |  |
-| 학습 | eval_freq, eval_iter |  |
-| 최적화 | lr, weight_decay |  |
+| 구현 | 구현 파일 | `src/train.py` |
+| 모델 | vocab_size | 3000 |
+| 모델 | context_length | 128 |
+| 모델 | stride | 64 |
+| 모델 | emb_dim | 256 |
+| 모델 | n_heads | 4 |
+| 모델 | n_layers | 4 |
+| 모델 | drop_rate | 0.15 |
+| 모델 | qkv_bias | False |
+| 학습 | batch_size | 4 |
+| 학습 | num_epochs | 100 |
+| 학습 | eval_freq | 100 |
+| 학습 | eval_iter | 20 |
+| 최적화 | learning_rate | 3e-4 |
+| 최적화 | weight_decay | 0.01 |
 
-### 6.2 결과
+### 6.1.2 결과
 
 | 항목 | 내용 |
 | --- | --- |
-| train loss | epoch별 표 또는 요약 |
-| validation loss | epoch별 표 또는 요약 |
-| 손실 그래프 | 그래프 또는 파일 경로 |
-| 생성 샘플 | 같은 시작 문맥으로 epoch별 비교 |
-| checkpoint 경로 | (예: `checkpoints/ckpt_epoch_5.pt`) |
+| final train loss |  |
+| final validation loss |  |
+| best validation loss |  |
+| best epoch |  |
+| checkpoint 경로 |  |
+
+#### 손실 그래프
+
+![사전학습 손실 그래프](results/pretrain_loss_curve.png)
+
+- x축: epoch
+- y축: train loss, validation loss
+- 그래프 아래에 loss 변화 경향을 1~2문장으로 요약
+
+#### 정확도 그래프
+
+![사전학습 정확도 그래프](results/pretrain_accuracy_curve.png)
+
+- x축: epoch
+- y축: train accuracy, validation accuracy
+- 그래프 아래에 accuracy 변화 경향을 1~2문장으로 요약
+
+#### 생성 샘플
+
+| epoch | 생성 결과 |
+| --- | --- |
+| 1 |  |
+| 2 |  |
+| 3 |  |
+
+#### 결과 해석
+
+- validation loss가 가장 낮았던 epoch와 그 이후 추세를 간단히 정리
+- 생성 결과가 학습 초반 대비 얼마나 자연스러워졌는지 한두 문장으로 설명
 
 ---
 
 ## 7. 미세 조정
+
+### 7.1.1 설정
+
+| 구분 | 항목 | 값 |
+| --- | --- | --- |
+| 구현 | 구현 파일 | `src/finetune.py` |
+| 구현 | 과제 | NSMC 리뷰 긍정/부정 분류 |
+| 데이터 | 데이터 포맷 | JSONL, `text`, `label` |
+| 모델 | tokenizer_vocab_size | 3000 |
+| 모델 | max_length | 128 |
+| 모델 | emb_dim | 256 |
+| 모델 | n_heads | 4 |
+| 모델 | n_layers | 4 |
+| 모델 | drop_rate | 0.2 |
+| 모델 | qkv_bias | False |
+| 분류기 | classifier_drop_rate | 0.2 |
+| 학습 | batch_size | 128 |
+| 학습 | num_epochs | 8 |
+| 최적화 | learning_rate | 1e-5 |
+| 최적화 | weight_decay | 0.02 |
+
+### 7.1.2 결과
 
 | 항목 | 내용 |
 | --- | --- |
@@ -126,6 +188,36 @@
 | validation loss / accuracy |  |
 | test loss / accuracy |  |
 | 오류 예시 | 틀린 리뷰 예시와 추정 원인 |
+
+#### 손실 그래프
+
+![미세조정 손실 그래프](results/finetune_loss_curve.png)
+
+- x축: epoch
+- y축: train loss, validation loss
+- 그래프 아래에 loss 변화 경향을 1~2문장으로 요약
+
+#### 정확도 그래프
+
+![미세조정 정확도 그래프](results/finetune_accuracy_curve.png)
+
+- x축: epoch
+- y축: train accuracy, validation accuracy
+- 그래프 아래에 accuracy 변화 경향을 1~2문장으로 요약
+
+#### 오류 예시
+
+| 리뷰 문장 | 정답 레이블 | 예측 레이블 | 추정 원인 |
+| --- | --- | --- | --- |
+|  |  |  |  |
+|  |  |  |  |
+|  |  |  |  |
+
+#### 결과 해석
+
+- best validation loss를 기준으로 어떤 epoch의 모델을 최종 기준으로 삼았는지 정리
+- test accuracy가 validation accuracy와 비교해 어떤 흐름을 보였는지 한두 문장으로 설명
+- 오분류 예시에서 드러난 한계나 데이터 특성을 간단히 분석
 
 ---
 
