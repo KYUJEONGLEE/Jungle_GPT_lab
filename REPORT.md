@@ -209,33 +209,19 @@
 
 #### 손실 그래프
 
-![2차시도 손실 그래프](image.png)
-
-- x축: epoch
-- y축: train loss, validation loss
-- train_loss는 계속 감소하는 반면, val_loss는 약 10 epoch 이후 거의 평평하게 유지되지만, 후반으로 갈수록 여전히 약간씩 증가하는 모습을 보인다.
+<img width="691" height="470" alt="image" src="https://github.com/user-attachments/assets/bc20924b-9280-49d6-bd9c-28bf64018d82" />
 
 #### 정확도 그래프
 
-![사전학습 정확도 그래프](results/pretrain_accuracy_curve.png)
-
-- x축: epoch
-- y축: train accuracy, validation accuracy
-- train_loss가 계속 감소하는 반면, val_loss는 약 10 epoch 이후 거의 평평하게 유지되다가 후반에 아주 완만하게 증가한다.
-
-#### 생성 샘플
-
-| epoch | 생성 결과 |
-| --- | --- |
-| 1 |  |
-| 2 |  |
-| 3 |  |
+<img width="700" height="470" alt="image" src="https://github.com/user-attachments/assets/8d8e3d8e-5c22-4ca8-9684-f2ba2f3e4dcc" />
 
 #### 결과 해석
 
 - 두 번째 테스트에서도 train_loss는 지속적으로 감소하므로 학습 데이터에 대한 학습은 정상적으로 진행되었다.
 - val_loss는 초반에 빠르게 감소한 뒤 약 10~13 epoch 부근에서 가장 낮은 구간을 형성한다.
 - 이후 val_loss가 급격히 증가하지는 않지만, 후반부에서 여전히 약간씩 증가하는 모습을 보인다.
+- 또한 learning rate를 낮추고 dropout 및 weight decay를 증가시켰기 때문에, 같은 epoch 수에서 train loss는 첫 번째 테스트보다 덜 감소하였다.
+- 실제로 validation loss는 첫 번째 테스트보다 더 오랫동안 낮은 구간을 유지했고, 후반부 상승 폭도 완만해져 과적합이 일부 완화되었다.
 - 따라서 첫 번째 테스트보다 과적합이 비교적 완화되었지만, train_loss와 val_loss의 차이가 계속 벌어지는 점에서 과적합 경향이 완전히 사라진 것은 아니다.
 
 ### 6.3.1 3차 시도
@@ -268,33 +254,29 @@ for line in train_text.splitlines():
 
 | 항목 | 내용 |
 | --- | --- |
+| final train loss | 4.2629 |
+| final validation loss | 5.0643 |
+| best validation loss | 5.0265 |
+| best epoch | 13 |
 | 주요 관찰 | 하이퍼파라미터 조정만으로는 `val_loss`가 의미 있게 감소하지 않았다. |
 | 핵심 변경 | 리뷰 단위 encode + `<bos>`/`<eos>` 추가 |
 | 결과 해석 | 단순 하이퍼파라미터 조정보다 인코딩 방식 변경이 `val_loss` 개선에 더 직접적인 영향을 주었다. |
 
 #### 손실 그래프
 
-![2차시도 손실 그래프](image.png)
-
-- x축: epoch
-- y축: train loss, validation loss
-- train_loss는 계속 감소하는 반면, val_loss는 약 10 epoch 이후 거의 평평하게 유지되지만, 후반으로 갈수록 여전히 약간씩 증가하는 모습을 보인다.
+<img width="691" height="470" alt="image" src="https://github.com/user-attachments/assets/c25c14fd-fd0b-4a85-95b8-f8adcc214171" />
 
 #### 정확도 그래프
 
-![사전학습 정확도 그래프](results/pretrain_accuracy_curve.png)
-
-- x축: epoch
-- y축: train accuracy, validation accuracy
-- train_loss가 계속 감소하는 반면, val_loss는 약 10 epoch 이후 거의 평평하게 유지되다가 후반에 아주 완만하게 증가한다.
+<img width="700" height="470" alt="image" src="https://github.com/user-attachments/assets/eb379b14-40e7-4582-b692-61c851e011f0" />
 
 #### 생성 샘플
 
 | epoch | 생성 결과 |
 | --- | --- |
-| 1 |  |
-| 2 |  |
-| 3 |  |
+| 1 | 영화다 못보고 평점 남주겠어볼껀면 보아봄 제발 욕밖에 맞추려고 했는데.. 이거보단 잼있게 만드는 영화 찍어? 좋은 어째 보는데 나서 좋았는데 중심도 못 주려했는데 너무 재밌네요. 뭐라고요ㅋ... 1,2까지만 정말 재밌고 빤오랫동안 느슨 너무 높을 죽여? 감독의 상상력...저기서 |
+| 2 | 영화중에 가장 인상깊지 않은 느낌. 보고싶어지는 것도 그랬어요.. 스토리도 죽지하루크트콤한영화 2-,2탄과 편집도 드는,7년의 달달콤한 소재는, 액션.미,20대와 연출, 모든게울언,명배우를 가야 해보들의 향한 소재는,원작,해. 왜곡도 많아서버려야 |
+| 3 | 영화보고 왜 0점 알아라. 근데 왜 그랬보다가 딴작품이다. 여기들' 늦게만 안나옴..그는 터져야?박작지ㅋㅋㅋ여배우가요?나물과 브로써 나발한다는지도하시면 시나리오가? 1점도 아까운 둘째치고 애니가? 정말 잘봣는영화 재밌어가는건 둘,음악의 새로운 시리, 윤성이 있다. 재밌 |
 
 #### 결과 해석
 
