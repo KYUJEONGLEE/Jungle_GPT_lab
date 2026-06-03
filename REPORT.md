@@ -558,13 +558,3 @@ for line in train_text.splitlines():
 | GPU/CPU 정보 | NVIDIA GeForce RTX 5060 Laptop GPU |
 | 총 학습 소요 시간 | 20m |
 
----
-
-## 9. 고찰
-
-- 어려웠던 점
-- 한국어 byte-level BPE 구현에서 조심한 점
-- loss가 줄어든 이유 또는 줄어들지 않은 이유
-- 과적합·과소적합 여부
-- 하이퍼파라미터 변경 시도와 결과
-- 다음에 개선하고 싶은 점
