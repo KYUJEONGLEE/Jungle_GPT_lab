@@ -249,8 +249,17 @@ tokenizer.encode(train_text)
 for line in train_text.splitlines():
     token_ids.extend(tokenizer.encode(line, add_bos_eos=True))
 ```
+### 6.3.2 epoch 별 loss
+| epoch | step | train_loss | val_loss | train_acc | val_acc | val_ppl |
+|---:|---:|---:|---:|---:|---:|---:|
+| 9 | 7600 | 4.7252 | 5.0407 | 0.1772 | 0.1575 | 154.58 |
+| 10 | 8450 | 4.6858 | 5.0338 | 0.1785 | 0.1579 | 153.51 |
+| 11 | 9300 | 4.6461 | 5.0304 | 0.1818 | 0.1583 | 153.00 |
+| 12 | 10150 | 4.5753 | 5.0267 | 0.1934 | 0.1594 | 152.43 |
+| 13 | 11000 | 4.5324 | 5.0265 | 0.1951 | 0.1595 | 152.40 |
+| 14 | 11850 | 4.4920 | 5.0308 | 0.1975 | 0.1593 | 153.06 |
 
-### 6.3.2 결과
+### 6.3.3 결과
 
 | 항목 | 내용 |
 | --- | --- |
@@ -376,10 +385,10 @@ for line in train_text.splitlines():
 
 | 항목 | 내용 |
 | --- | --- |
-| Python | (예: Python 3.11) |
-| PyTorch | (예: PyTorch 2.x) |
-| 실행 환경 | Colab GPU / Colab CPU / 로컬 |
-| GPU/CPU 정보 |  |
+| Python | Python 3.11.15 |
+| PyTorch | PyTorch 2.11.0+cu128 |
+| 실행 환경 | GPU |
+| GPU/CPU 정보 | NVIDIA GeForce RTX 5060 Laptop GPU |
 | 총 학습 소요 시간 |  |
 
 ---
