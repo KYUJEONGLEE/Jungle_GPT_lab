@@ -13,7 +13,7 @@
 ## 1. 구현 현황
 
 | 단계 | 구현 내용 | 구현 파일 |
-| --- | --- | --- | --- |
+| --- | --- | --- |
 | 1 | UTF-8 byte-level BPE tokenizer | `src/bpe.py` |
 | 2 | GPTDataset, create_dataloader, InputEmbedding | `src/dataset.py`, `src/embeddings.py` |
 | 3 | MultiHeadAttention, causal mask | `src/attention.py` |
