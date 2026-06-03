@@ -150,29 +150,22 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| final train loss |  |
-| final validation loss |  |
-| best validation loss |  |
-| best epoch |  |
-| checkpoint 경로 |  |
+| final train loss | 4.0704 |
+| final validation loss | 7.0678 |
+| best validation loss | 6.1328 |
+| best epoch | 8 |
 
 #### 손실 그래프
 
 
 <img width="691" height="470" alt="image" src="https://github.com/user-attachments/assets/68e21829-9c81-440c-b06f-fe004a67968c" />
 
-
-- x축: epoch
-- y축: train loss, validation loss
-- 그래프를 보면 train_loss는 epoch가 증가할수록 계속 감소하지만, val_loss는 여전히 8~10 epoch 부근에서 가장 낮아진 뒤, 다시 증가하는 모습을 보인다.
+- 그래프를 보면 train_loss는 epoch가 증가할수록 지속적으로 감소한다. 이는 모델이 학습 데이터에 대해서는 점점 더 잘 맞춰지고 있음을 의미한다. 반면 val_loss는 초반에는 빠르게 감소하지만, 약 8~10 epoch 부근에서 가장 낮은 값을 기록한 뒤 다시 증가하는 모습을 보인다.
 
 #### 정확도 그래프
 
 <img width="700" height="470" alt="image" src="https://github.com/user-attachments/assets/a6d9e711-d1e4-42bf-b9d1-99200f4a1391" />
 
-- x축: epoch
-- y축: train accuracy, validation accuracy
-- 그래프를 보면 train_loss는 epoch가 증가할수록 지속적으로 감소한다. 이는 모델이 학습 데이터에 대해서는 점점 더 잘 맞춰지고 있음을 의미한다. 반면 val_loss는 초반에는 빠르게 감소하지만, 약 8~10 epoch 부근에서 가장 낮은 값을 기록한 뒤 다시 증가하는 모습을 보인다.
 
 #### 생성 샘플
 
@@ -186,39 +179,33 @@
 
 #### 결과 해석
 
-- 첫 번째 실험에서는 epoch를 20으로 설정하고, dropout_ratio를 0.2, weight_decay를 0.02로 설정하여 기본적인 학습 경향과 과적합 여부를 확인하였다. 실험 결과, 초반에는 train_loss와 val_loss가 모두 감소하며 정상적으로 학습이 진행되었지만, 중반 이후에는 train_loss만 계속 감소하고 val_loss는 다시 증가하였다.
+- 첫 번째 실험에서는 epoch를 30으로 설정하고, dropout_ratio를 0.1, weight_decay를 0.02로 설정하여 기본적인 학습 경향과 과적합 여부를 확인하였다. 실험 결과, 초반에는 train_loss와 val_loss가 모두 감소하며 정상적으로 학습이 진행되었지만, 중반 이후에는 train_loss만 계속 감소하고 val_loss는 다시 증가하였다.
 - 그래프를 보면 train_loss는 epoch가 증가할수록 지속적으로 감소한다. 이는 모델이 학습 데이터를 점점 더 잘 학습하고 있음을 의미한다. 반면 val_loss는 초반에는 train_loss와 함께 빠르게 감소하지만, 약 8~10 epoch 부근에서 가장 낮은 값을 기록한 뒤 다시 증가하는 모습을 보인다.
 - 이는 모델이 일정 시점 이후부터 학습 데이터에는 계속 적응하지만, 검증 데이터에 대한 일반화 성능은 더 이상 개선되지 않는다는 것을 의미한다.
 
+#### 가설과 기대 결과
+- 첫 번째 테스트에서는 train_loss가 지속적으로 감소하는 반면 val_loss는 약 8 epoch 이후 다시 증가하였다.
+- 이는 모델이 학습 데이터에는 계속 적응하지만 validation 데이터에 대한 일반화 성능은 악화되는 과적합 현상으로 해석된다.
+- 따라서 두 번째 테스트에서는 drop_rate와 weight_decay를 증가시키고 learning_rate를 낮춰 정규화를 강화하고 업데이트 폭을 줄인다.
+- 이를 통해 train_loss는 계속 감소하되, val_loss의 상승 시점을 늦추고 상승 폭을 완화할 수 있을 것으로 기대한다.
+- 
 ### 6.2.1 2차 시도
 
 | 구분 | 항목 | 값 |
 | --- | --- | --- |
-| 구현 | 구현 파일 | `src/train.py` |
-| 모델 | vocab_size | 3000 |
-| **모델** | **context_length** | **64** |
-| 모델 | stride | 64 |
-| **모델** | **emb_dim** | **128** |
-| 모델 | n_heads | 4 |
-| **모델** | **n_layers** | **2** |
-| **모델** | **drop_rate** | **0.1** |
-| 모델 | qkv_bias | False |
-| **학습** | **batch_size** | **16** |
+| 모델 | **drop_rate** | **0.2** |
 | 학습 | num_epochs | 20 |
-| 학습 | eval_freq | 100 |
-| 학습 | eval_iter | 20 |
-| 최적화 | learning_rate | 3e-4 |
-| **최적화** | **weight_decay** | **0.01** |
+| 최적화 | learning_rate | 2e-4 |
+| **최적화** | **weight_decay** | **0.03** |
 
 ### 6.2.2 결과
 
 | 항목 | 내용 |
 | --- | --- |
-| final train loss |  |
-| final validation loss |  |
-| best validation loss |  |
-| best epoch |  |
-| checkpoint 경로 |  |
+| final train loss | 5.0059 |
+| final validation loss | 6.2184 |
+| best validation loss | 6.0851 |
+| best epoch | 11 |
 
 #### 손실 그래프
 
