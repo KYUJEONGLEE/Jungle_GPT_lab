@@ -4,9 +4,9 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 반 | (예: AI 1반) |
-| 팀명 | (예: 3팀) |
-| 팀원 | (예: 홍길동, 김철수) |
+| 반 | SW_AI LAB 302반 |
+| 팀명 | 6팀 |
+| 팀원 | 송채강, 이규정, 이원재 |
 
 ---
 
@@ -27,19 +27,13 @@
 
 | 실행 명령 | 결과 | 비고 |
 | --- | --- | --- |
-| `pytest tests/test_bpe.py -v` | 통과 / 실패 / 미실행 |  |
-| `pytest tests/test_dataset.py -v` | 통과 / 실패 / 미실행 |  |
-| `pytest tests/test_attention.py -v` | 통과 / 실패 / 미실행 |  |
-| `pytest tests/test_model.py -v` | 통과 / 실패 / 미실행 |  |
-| `pytest tests/test_train.py -v` | 통과 / 실패 / 미실행 |  |
-| `pytest tests/test_finetune.py -v` | 통과 / 실패 / 미실행 |  |
-| `pytest tests/ -v` | 통과 / 실패 / 미실행 |  |
-
-실패한 테스트가 있다면 에러 요약을 적습니다.
-
-| 실패한 테스트 | 에러 요약 | 해결 시도 |
-| --- | --- | --- |
-| (예: `test_train.py::TestGenerate::test_generate_shape`) |  |  |
+| `pytest tests/test_bpe.py -v` | 통과 | 반복 corpus에서 가장 자주 등장하는 pair가 merges[0]에 들어가는지 확인 추가 |
+| `pytest tests/test_dataset.py -v` | 통과 |  |
+| `pytest tests/test_attention.py -v` | 통과 | attention weight가 올바르게 정규화되는지는 확인 테스트 추가 |
+| `pytest tests/test_model.py -v` | 통과 |  |
+| `pytest tests/test_train.py -v` | 통과 |  |
+| `pytest tests/test_finetune.py -v` | 통과 | 짧은 입력은 padding되고, 긴 입력은 truncation되는지 확인하는 테스트 추가 |
+| `pytest tests/ -v` | 통과 |  |
 
 ---
 
@@ -52,7 +46,7 @@
 | 사전 학습 데이터 | `data/nsmc_lm_train.txt`, `data/nsmc_lm_val.txt` |
 | 미세 조정 데이터 | `data/nsmc_sentiment_train.jsonl`, `data/nsmc_sentiment_val.jsonl`, `data/nsmc_sentiment_test.jsonl` |
 | 전처리 방식 | 빈 리뷰 제거, 공백 정리, train/validation 분리 |
-| 사용한 데이터 크기 | Smoke / Light / Basic 중 선택 |
+| 사용한 데이터 크기 | 사전 학습: train 1,379,486자, val 120,560자 |
 
 ---
 
@@ -62,13 +56,14 @@
 | --- | --- |
 | 구현 파일 | `src/bpe.py` |
 | BPE 방식 | UTF-8 byte-level BPE |
+| 인코딩 방식 | 문장 단위 `<bos>`/`<eos>` 추가 |
 | 특수 토큰 ID | `<pad>=0`, `<unk>=1`, `<bos>=2`, `<eos>=3` |
 | byte token ID 범위 | 4~259 |
-| vocab_size | (예: 3000) |
-| 학습 corpus 크기 | (예: `corpus[:1_500_000]`) |
-| 어휘 학습 시간 | (예: Colab CPU Basic 설정 35분) |
-| vocabulary 저장 경로 | (예: `data/nsmc_bpe_vocab_3000.json`) |
-| 인코딩/디코딩 복원 예시 | (예: `decode(encode("이 영화는 좋았다")) == 원문`) |
+| vocab_size | 3000 |
+| 학습 corpus 크기 | corpus[:1,500,000] / 실제 사용 1,379,486자 |
+| 어휘 학습 시간 | 17.01분 (1020.73초) |
+| vocabulary 저장 경로 | data\nsmc_bpe_vocab_3000_timed.json |
+| 인코딩/디코딩 복원 예시 | decode(encode("이 영화는 좋았다")) == "이 영화는 좋았다" → True |
 
 ---
 
