@@ -12,14 +12,14 @@
 
 ## 1. 구현 현황
 
-| 단계 | 구현 내용 | 구현 파일 | 담당자 |
+| 단계 | 구현 내용 | 구현 파일 |
 | --- | --- | --- | --- |
-| 1 | UTF-8 byte-level BPE tokenizer | `src/bpe.py` |  |
-| 2 | GPTDataset, create_dataloader, InputEmbedding | `src/dataset.py`, `src/embeddings.py` |  |
-| 3 | MultiHeadAttention, causal mask | `src/attention.py` |  |
-| 4 | LayerNorm, GELU, FeedForward, TransformerBlock, GPTModel, generate_text_simple | `src/model.py` |  |
-| 5 | loss 계산, checkpoint, generate, train_model | `src/train.py` |  |
-| 6 | NSMC 감성 분류 Dataset과 classifier | `src/finetune.py` |  |
+| 1 | UTF-8 byte-level BPE tokenizer | `src/bpe.py` |
+| 2 | GPTDataset, create_dataloader, InputEmbedding | `src/dataset.py`, `src/embeddings.py` |
+| 3 | MultiHeadAttention, causal mask | `src/attention.py` |
+| 4 | LayerNorm, GELU, FeedForward, TransformerBlock, GPTModel, generate_text_simple | `src/model.py` |
+| 5 | loss 계산, checkpoint, generate, train_model | `src/train.py` |
+| 6 | NSMC 감성 분류 Dataset과 classifier | `src/finetune.py` |
 
 ---
 
